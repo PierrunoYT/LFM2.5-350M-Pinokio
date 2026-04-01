@@ -26,13 +26,13 @@ self.addEventListener("message", async (e) => {
       return;
     }
 
-    const { generationId } = e.data;
+    const { generationId, task = "chat" } = e.data;
 
     try {
       const streamer = new TextStreamer(generator.tokenizer, {
         skip_prompt: true,
         callback_function: (token) => {
-          self.postMessage({ type: "token", token, generationId });
+          self.postMessage({ type: "token", token, generationId, task });
         },
       });
 
@@ -43,9 +43,9 @@ self.addEventListener("message", async (e) => {
       });
 
       const assistantMessage = output[0].generated_text.at(-1).content;
-      self.postMessage({ type: "done", output: assistantMessage, generationId });
+      self.postMessage({ type: "done", output: assistantMessage, generationId, task });
     } catch (err) {
-      self.postMessage({ type: "error", message: err.message });
+      self.postMessage({ type: "error", message: err.message, generationId, task });
     }
   }
 });

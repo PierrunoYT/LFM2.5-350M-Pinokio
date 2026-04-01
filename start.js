@@ -4,7 +4,7 @@ module.exports = {
     {
       method: "notify",
       params: {
-        html: "Starting LFM2.5-350M Chat server…"
+        html: "Starting LFM2.5-350M Chat + Summarize server…"
       }
     },
     {
@@ -27,7 +27,7 @@ module.exports = {
     {
       method: "notify",
       params: {
-        html: "✅ LFM2.5-350M Chat is running! Open the Web UI to start chatting."
+        html: "✅ LFM2.5-350M Chat + Summarize is running! Open the Web UI to chat or summarize your own text."
       }
     }
   ]

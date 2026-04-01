@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LFM2.5-350M — WebGPU Chat</title>
+  <title>LFM2.5-350M — Chat + Summarize</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -39,6 +39,40 @@
       background: #4f9cf7;
       transition: width 0.2s;
     }
+    #tabs {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem 0;
+    }
+    .tab-btn {
+      padding: 0.55rem 0.95rem;
+      border-radius: 999px;
+      border: 1px solid #2f2f2f;
+      background: #181818;
+      color: #bdbdbd;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .tab-btn.active {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #fff;
+    }
+    #panels {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+    }
+    .panel {
+      flex: 1;
+      min-height: 0;
+      display: none;
+      flex-direction: column;
+    }
+    .panel.active {
+      display: flex;
+    }
     #chat {
       flex: 1;
       overflow-y: auto;
@@ -66,13 +100,13 @@
       background: #1e1e1e;
       color: #ddd;
     }
-    #input-area {
+    .input-area {
       padding: 0.75rem 1.5rem;
       border-top: 1px solid #2a2a2a;
       display: flex;
       gap: 0.5rem;
     }
-    #input-area textarea {
+    .input-area textarea {
       flex: 1;
       resize: none;
       padding: 0.6rem 0.75rem;
@@ -85,8 +119,12 @@
       rows: 1;
       height: 42px;
     }
-    #input-area textarea:focus { outline: none; border-color: #4f9cf7; }
-    #input-area button {
+    .input-area textarea:focus,
+    .panel textarea:focus {
+      outline: none;
+      border-color: #4f9cf7;
+    }
+    button {
       padding: 0.6rem 1rem;
       border-radius: 8px;
       border: none;
@@ -94,43 +132,125 @@
       font-size: 0.9rem;
       font-weight: 500;
     }
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
     #send-btn {
       background: #2563eb;
       color: #fff;
-    }
-    #send-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
     }
     #clear-btn {
       background: #2a2a2a;
       color: #ccc;
     }
-    #clear-btn:hover { background: #333; }
+    #clear-btn:hover,
+    #clear-summary-btn:hover {
+      background: #333;
+    }
+    #summary-panel {
+      padding: 1rem 1.5rem 1.5rem;
+      gap: 1rem;
+    }
+    .panel-copy {
+      color: #a0a0a0;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    #summary-input {
+      flex: 1;
+      min-height: 220px;
+      resize: vertical;
+      padding: 0.9rem 1rem;
+      border-radius: 12px;
+      border: 1px solid #333;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      font-size: 0.95rem;
+      font-family: inherit;
+      line-height: 1.5;
+    }
+    #summary-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    #summarize-btn {
+      background: #2563eb;
+      color: #fff;
+    }
+    #clear-summary-btn {
+      background: #2a2a2a;
+      color: #ccc;
+    }
+    #summary-output {
+      min-height: 180px;
+      padding: 1rem;
+      border: 1px solid #2f2f2f;
+      border-radius: 12px;
+      background: #151515;
+      color: #ddd;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      overflow-y: auto;
+    }
+    #summary-output.empty {
+      color: #777;
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>LFM2.5-350M — WebGPU Chat</h1>
+    <h1>LFM2.5-350M — Chat + Summarize</h1>
     <div id="status">Initializing…</div>
     <div id="progress-bar-container"><div id="progress-bar"></div></div>
   </header>
 
-  <div id="chat"></div>
+  <div id="tabs">
+    <button class="tab-btn active" data-panel="chat-panel">Chat</button>
+    <button class="tab-btn" data-panel="summary-panel">Summarize</button>
+  </div>
 
-  <div id="input-area">
-    <textarea id="user-input" placeholder="Type a message…" disabled></textarea>
-    <button id="send-btn" disabled>Send</button>
-    <button id="clear-btn">Clear</button>
+  <div id="panels">
+    <section id="chat-panel" class="panel active">
+      <div id="chat"></div>
+
+      <div class="input-area">
+        <textarea id="user-input" placeholder="Type a message…" disabled></textarea>
+        <button id="send-btn" disabled>Send</button>
+        <button id="clear-btn">Clear</button>
+      </div>
+    </section>
+
+    <section id="summary-panel" class="panel">
+      <p class="panel-copy">
+        Paste your own text to generate a concise summary inspired by the LFM2.5 WebGPU demo.
+      </p>
+      <textarea
+        id="summary-input"
+        placeholder="Paste an article, meeting notes, or any long text here…"
+        disabled
+      ></textarea>
+      <div id="summary-actions">
+        <button id="summarize-btn" disabled>Summarize</button>
+        <button id="clear-summary-btn">Clear</button>
+      </div>
+      <div id="summary-output" class="empty">Your summary will appear here.</div>
+    </section>
   </div>
 
   <script type="module">
     const worker = new Worker("worker.js", { type: "module" });
 
+    const tabButtons = document.querySelectorAll(".tab-btn");
+    const panels = document.querySelectorAll(".panel");
     const chatEl = document.getElementById("chat");
     const inputEl = document.getElementById("user-input");
     const sendBtn = document.getElementById("send-btn");
     const clearBtn = document.getElementById("clear-btn");
+    const summaryInputEl = document.getElementById("summary-input");
+    const summarizeBtn = document.getElementById("summarize-btn");
+    const clearSummaryBtn = document.getElementById("clear-summary-btn");
+    const summaryOutputEl = document.getElementById("summary-output");
     const statusEl = document.getElementById("status");
     const progressContainer = document.getElementById("progress-bar-container");
     const progressBar = document.getElementById("progress-bar");
@@ -138,12 +258,14 @@
     let messages = [
       { role: "system", content: "You are a helpful assistant." }
     ];
+    let ready = false;
     let generating = false;
+    let activeTask = null;
     let generationId = 0;
     let currentAssistantEl = null;
     let currentAssistantText = "";
+    let currentSummaryText = "";
 
-    // Ask worker to load the model
     statusEl.textContent = "Loading model…";
     progressContainer.style.display = "block";
     worker.postMessage({ type: "load" });
@@ -156,58 +278,110 @@
         statusEl.textContent = `Loading model… ${pct}%`;
         progressBar.style.width = pct + "%";
       } else if (data.type === "ready") {
+        ready = true;
         statusEl.textContent = "Ready";
         progressContainer.style.display = "none";
-        inputEl.disabled = false;
-        sendBtn.disabled = false;
-        inputEl.focus();
+        updateControls();
+        focusActiveInput();
       } else if (data.type === "token") {
         if (data.generationId !== generationId) return;
-        currentAssistantText += data.token;
-        if (currentAssistantEl) {
-          currentAssistantEl.textContent = currentAssistantText;
-          chatEl.scrollTop = chatEl.scrollHeight;
+        if (data.task === "summary") {
+          currentSummaryText += data.token;
+          summaryOutputEl.textContent = currentSummaryText;
+        } else {
+          currentAssistantText += data.token;
+          if (currentAssistantEl) {
+            currentAssistantEl.textContent = currentAssistantText;
+            chatEl.scrollTop = chatEl.scrollHeight;
+          }
         }
       } else if (data.type === "done") {
         if (data.generationId !== generationId) return;
         const finalText = data.output || currentAssistantText;
-        if (currentAssistantEl) {
-          currentAssistantEl.textContent = finalText;
+        if (data.task === "summary") {
+          summaryOutputEl.textContent = data.output || currentSummaryText || "No summary generated.";
+          summaryOutputEl.classList.remove("empty");
+        } else {
+          if (currentAssistantEl) {
+            currentAssistantEl.textContent = finalText;
+          }
+          messages.push({ role: "assistant", content: finalText });
+          currentAssistantEl = null;
+          currentAssistantText = "";
         }
-        messages.push({ role: "assistant", content: finalText });
-        currentAssistantEl = null;
-        currentAssistantText = "";
+        currentSummaryText = "";
         generating = false;
-        inputEl.disabled = false;
-        sendBtn.disabled = false;
-        inputEl.focus();
+        activeTask = null;
+        statusEl.textContent = "Ready";
+        updateControls();
+        focusActiveInput();
       } else if (data.type === "error") {
         statusEl.textContent = "Error: " + data.message;
         generating = false;
-        inputEl.disabled = false;
-        sendBtn.disabled = false;
+        activeTask = null;
+        currentAssistantEl = null;
+        currentAssistantText = "";
+        currentSummaryText = "";
+        updateControls();
       }
     });
 
     function sendMessage() {
+      if (!ready || generating) return;
       const text = inputEl.value.trim();
-      if (!text || generating) return;
+      if (!text) return;
 
-      // Show user bubble
       appendBubble(text, "user");
       messages.push({ role: "user", content: text });
       inputEl.value = "";
 
-      // Prepare assistant bubble
       currentAssistantText = "";
       currentAssistantEl = appendBubble("", "assistant");
 
       generating = true;
+      activeTask = "chat";
       generationId++;
-      inputEl.disabled = true;
-      sendBtn.disabled = true;
+      statusEl.textContent = "Generating response…";
+      updateControls();
 
-      worker.postMessage({ type: "generate", messages: [...messages], generationId });
+      worker.postMessage({
+        type: "generate",
+        task: "chat",
+        messages: [...messages],
+        generationId,
+      });
+    }
+
+    function summarizeText() {
+      if (!ready || generating) return;
+      const text = summaryInputEl.value.trim();
+      if (!text) return;
+
+      currentSummaryText = "";
+      summaryOutputEl.textContent = "";
+      summaryOutputEl.classList.remove("empty");
+
+      generating = true;
+      activeTask = "summary";
+      generationId++;
+      statusEl.textContent = "Summarizing…";
+      updateControls();
+
+      worker.postMessage({
+        type: "generate",
+        task: "summary",
+        messages: [
+          {
+            role: "system",
+            content: "You are a concise summarization assistant. Write a clear summary using only the provided text. Start with a short paragraph, then include 3 to 5 short bullet points when useful.",
+          },
+          {
+            role: "user",
+            content: `Summarize the following text. Focus on the most important ideas, key details, and action items when present.\n\n${text}`,
+          },
+        ],
+        generationId,
+      });
     }
 
     function appendBubble(text, role) {
@@ -219,11 +393,40 @@
       return div;
     }
 
+    function updateControls() {
+      const busy = generating;
+      inputEl.disabled = !ready || busy;
+      sendBtn.disabled = !ready || busy;
+      summaryInputEl.disabled = !ready || busy;
+      summarizeBtn.disabled = !ready || busy;
+      clearBtn.disabled = busy;
+      clearSummaryBtn.disabled = busy;
+    }
+
+    function focusActiveInput() {
+      const activePanel = document.querySelector(".panel.active");
+      if (!activePanel || !ready || generating) return;
+      if (activePanel.id === "summary-panel") {
+        summaryInputEl.focus();
+      } else {
+        inputEl.focus();
+      }
+    }
+
     sendBtn.addEventListener("click", sendMessage);
+    summarizeBtn.addEventListener("click", summarizeText);
+
     inputEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         sendMessage();
+      }
+    });
+
+    summaryInputEl.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        summarizeText();
       }
     });
 
@@ -234,6 +437,24 @@
       generationId++;
       currentAssistantEl = null;
       currentAssistantText = "";
+    });
+
+    clearSummaryBtn.addEventListener("click", () => {
+      if (generating) return;
+      summaryInputEl.value = "";
+      summaryOutputEl.textContent = "Your summary will appear here.";
+      summaryOutputEl.classList.add("empty");
+      generationId++;
+      currentSummaryText = "";
+    });
+
+    tabButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetPanel = button.dataset.panel;
+        tabButtons.forEach((tab) => tab.classList.toggle("active", tab === button));
+        panels.forEach((panel) => panel.classList.toggle("active", panel.id === targetPanel));
+        focusActiveInput();
+      });
     });
   </script>
 </body>
