@@ -130,11 +130,22 @@ function cleanText(rawText) {
   text = text.replace(/&nbsp;/g, " ");
 
   // Remove pipe-separated navigation menus (e.g. "Home | News | Sport | ...")
-  // Matches runs of 3+ pipe-delimited segments that contain no sentence-ending punctuation
-  text = text.replace(/(?:[^|.!?\n]{1,40}\|){2,}[^|.!?\n]{0,40}/g, " ");
+  // Only removes the pipe-delimited segments themselves, not what follows the last pipe
+  text = text.replace(/(?:[^|.!?\n]{1,40}\|){2,}/g, " ");
 
-  // Remove repeated "N / N" rating artifacts (e.g. "10 / 10 10 / 10 10 / 10")
-  text = text.replace(/(?:\d+\s*\/\s*\d+\s*){2,}/g, " ");
+  // Remove nav items before the first pipe: a run of 5+ short capitalized phrases
+  // that appear immediately before a pipe-delimited segment
+  text = text.replace(/^(?:[A-ZÜÄÖÉÀÂÊÎÔÛÄÖ][^\s.!?|]{0,25}\s+){5,}(?=\S)/m, " ");
+
+  // Remove "Publiziert" publication markers common in Swiss/German news sites
+  text = text.replace(/Publiziert\s*\d*\.?\s*/gi, " ");
+
+  // Remove timestamps like "13:06" when they are standalone (not inside a sentence)
+  text = text.replace(/(?<!\w)\d{1,2}:\d{2}(?!\w)/g, " ");
+
+  // Remove "N / N" and "N / 10" rating artifacts (single or repeated)
+  text = text.replace(/\b(\d+)\s*\/\s*\1\b/g, " ");   // same-number: 10/10, 5/5
+  text = text.replace(/\b[1-9]\d*\s*\/\s*10\b/g, " "); // N/10 ratings
 
   // Remove social/share metadata: patterns like "Firstname Lastname 123 45 Merken"
   text = text.replace(/\b\d+\s+\d+\s+(?:Merken|Share|Like|Teilen|Views?|Comments?)\b/gi, " ");
@@ -160,7 +171,8 @@ function splitSections(cleanedText) {
 
   // If the text has no paragraph breaks, split on sentence boundaries into ~200-word chunks
   if (chunks.length <= 1 && chunks[0] && chunks[0].split(/\s+/).length > 200) {
-    const sentences = chunks[0].match(/[^.!?]+[.!?]+["']?\s*/g) || [chunks[0]];
+    // Negative lookbehind (?<!\d) prevents splitting on ordinal numbers (e.g. "30. April")
+    const sentences = chunks[0].match(/[^.!?]+(?<!\d)[.!?]+[»›"'\u201d\u203a)}\]]*\s*/g) || [chunks[0]];
     const regrouped = [];
     let current = "";
     for (const sentence of sentences) {
