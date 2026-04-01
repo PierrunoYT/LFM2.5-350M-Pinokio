@@ -1,8 +1,16 @@
 module.exports = {
-  run: [{
-    method: "fs.rm",
-    params: {
-      path: "env"
+  run: [
+    {
+      method: "shell.run",
+      params: {
+        message: "git checkout ."
+      }
+    },
+    {
+      method: "notify",
+      params: {
+        html: "✅ Reset complete. The app has been reverted to its original state."
+      }
     }
-  }]
+  ]
 }

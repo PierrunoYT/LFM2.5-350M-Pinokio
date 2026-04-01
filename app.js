@@ -38,6 +38,7 @@ let generationId = 0;
 let articleSource = "";
 let sections = [];
 let activeRequest = null;
+let abortController = null;
 
 worker.postMessage({ type: "load" });
 
@@ -170,7 +171,7 @@ function cleanText(rawText) {
   text = text.replace(/\n{3,}/g, "\n\n");
   text = text.split("\n").map((line) => line.trim()).filter((line) => line.length > 0).join("\n");
 
-  return Promise.resolve(text.trim());
+  return text.trim();
 }
 
 function splitSections(cleanedText) {
@@ -323,6 +324,10 @@ function updateControls() {
 }
 
 function beginRequest(type, outputEl, context = {}) {
+  if (abortController) {
+    abortController.abort();
+  }
+  abortController = new AbortController();
   generationId += 1;
   isGenerating = true;
   activeRequest = {
@@ -333,6 +338,7 @@ function beginRequest(type, outputEl, context = {}) {
     tokenCount: 0,
     ...context,
   };
+  worker.postMessage({ type: "abort" });
   updateControls();
 }
 

@@ -1,9 +1,18 @@
 import { pipeline, TextStreamer } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers";
 
 let generator = null;
+let currentAbortController = null;
 
 self.addEventListener("message", async (e) => {
   const { type } = e.data;
+
+  if (type === "abort") {
+    if (currentAbortController) {
+      currentAbortController.abort();
+      currentAbortController = null;
+    }
+    return;
+  }
 
   if (type === "load") {
     try {
@@ -28,11 +37,18 @@ self.addEventListener("message", async (e) => {
 
     const { generationId, task = "chat", options = {} } = e.data;
 
+    if (currentAbortController) {
+      currentAbortController.abort();
+    }
+    currentAbortController = new AbortController();
+    const signal = currentAbortController.signal;
+
     try {
       const streamer = new TextStreamer(generator.tokenizer, {
         skip_prompt: true,
         skip_special_tokens: true,
         callback_function: (token) => {
+          if (signal.aborted) return;
           self.postMessage({ type: "token", token, generationId, task });
         },
       });
@@ -43,9 +59,12 @@ self.addEventListener("message", async (e) => {
         streamer,
       });
 
+      if (signal.aborted) return;
+
       const assistantMessage = output[0].generated_text.at(-1).content;
       self.postMessage({ type: "done", output: assistantMessage, generationId, task });
     } catch (err) {
+      if (signal.aborted) return;
       self.postMessage({ type: "error", message: err.message, generationId, task });
     }
   }
