@@ -6,19 +6,11 @@ module.exports = {
   menu: async (kernel, info) => {
     let installed = info.exists("index.html")
     let running = {
-      install: info.running("install.js"),
       start: info.running("start.js"),
       update: info.running("update.js"),
       reset: info.running("reset.js"),
     }
-    if (running.install) {
-      return [{
-        default: true,
-        icon: "fa-solid fa-plug",
-        text: "Installing",
-        href: "install.js",
-      }]
-    } else if (installed) {
+    if (installed) {
       if (running.start) {
         let local = info.local("start.js")
         if (local && local.url) {
@@ -65,23 +57,12 @@ module.exports = {
           text: "Update",
           href: "update.js",
         }, {
-          icon: "fa-solid fa-plug",
-          text: "Install",
-          href: "install.js",
-        }, {
           icon: "fa-regular fa-circle-xmark",
           text: "<div><strong>Reset</strong><div>Revert to pre-install state</div></div>",
           href: "reset.js",
           confirm: "Are you sure you wish to reset the app?"
         }]
       }
-    } else {
-      return [{
-        default: true,
-        icon: "fa-solid fa-plug",
-        text: "Install",
-        href: "install.js",
-      }]
     }
   }
 }
