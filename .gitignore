@@ -1,0 +1,23 @@
+# Virtual environment
+env/
+
+# Hugging Face cache
+.cache/
+.huggingface/
+
+# Generated files
+outputs/
+*.wav
+*.mp3
+*.ogg
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
