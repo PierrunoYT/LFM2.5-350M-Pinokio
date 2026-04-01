@@ -1,8 +1,8 @@
 const path = require('path')
 module.exports = {
   version: "5.0",
-  title: "LFM2.5-350M Chat + Summarize",
-  description: "In-browser LFM2.5-350M chat and text summarization via WebGPU. No GPU server required; everything runs in your browser.",
+  title: "LFM2.5-350M Reader + Q&A",
+  description: "Paste long text, clean it into readable sections, summarize each section, and ask questions in-browser with WebGPU.",
   icon: "icon.jpg",
   menu: async (kernel, info) => {
     let installed = info.exists("index.html")

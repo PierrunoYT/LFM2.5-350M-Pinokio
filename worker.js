@@ -26,19 +26,20 @@ self.addEventListener("message", async (e) => {
       return;
     }
 
-    const { generationId, task = "chat" } = e.data;
+    const { generationId, task = "chat", options = {} } = e.data;
 
     try {
       const streamer = new TextStreamer(generator.tokenizer, {
         skip_prompt: true,
+        skip_special_tokens: true,
         callback_function: (token) => {
           self.postMessage({ type: "token", token, generationId, task });
         },
       });
 
       const output = await generator(e.data.messages, {
-        max_new_tokens: 512,
-        do_sample: false,
+        max_new_tokens: options.max_new_tokens ?? 512,
+        do_sample: options.do_sample ?? false,
         streamer,
       });
 

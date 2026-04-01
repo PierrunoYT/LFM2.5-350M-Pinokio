@@ -1,6 +1,6 @@
-# LFM2.5-350M — WebGPU Chat + Summarize (Pinokio)
+# LFM2.5-350M - WebGPU Reader + Q&A (Pinokio)
 
-In-browser text generation powered by [LiquidAI/LFM2.5-350M](https://huggingface.co/LiquidAI/LFM2.5-350M) via [transformers.js](https://huggingface.co/docs/transformers.js) and WebGPU. No GPU server required; the model runs entirely in your browser for both chat and text summarization.
+In-browser text generation powered by [LiquidAI/LFM2.5-350M](https://huggingface.co/LiquidAI/LFM2.5-350M) via [transformers.js](https://huggingface.co/docs/transformers.js) and WebGPU. Paste long text, clean it into readable sections, summarize each section, and ask questions about the converted article without any server-side GPU.
 
 ## Model
 
@@ -24,14 +24,15 @@ In-browser text generation powered by [LiquidAI/LFM2.5-350M](https://huggingface
 
 1. **Install** — Click the Install button (no dependencies to download)
 2. **Start** — Click Start to launch the local HTTP server
-3. **Open Web UI** — Click "Open Web UI" to open the chat and summarization interface
+3. **Open Web UI** — Click "Open Web UI" to open the reader and Q&A interface
 4. The model will download automatically on first use (~200MB)
 
 ## Features
 
-- **Chat tab** for normal conversation with the model
-- **Summarize tab** for pasting your own text and generating a concise summary
-- Streaming token output powered by the same browser-side WebGPU model
+- Paste a full article or note and click **Convert**
+- Cleanup removes URLs, markdown image syntax, HTML tags, and noisy spacing
+- Converted text is split into sections with a **Summarize** button on each paragraph
+- Floating bottom-right Q&A box answers questions using the converted text only
 
 ## Architecture
 

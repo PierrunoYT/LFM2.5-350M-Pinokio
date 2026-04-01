@@ -3,459 +3,1133 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LFM2.5-350M — Chat + Summarize</title>
+  <title>LFM2.5 Summarizer | WebGPU</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface-hover: #222632;
+      --border: #2a2e3b;
+      --text: #e4e4e7;
+      --text-muted: #8b8fa3;
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.25);
+      --accent-light: #818cf8;
+      --success: #22c55e;
+      --radius: 12px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #0f0f0f;
-      color: #e0e0e0;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.7;
     }
-    header {
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid #2a2a2a;
-      text-align: center;
+
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2.25rem 2rem 7rem;
     }
-    header h1 { font-size: 1.25rem; font-weight: 600; }
-    #status {
-      margin-top: 0.5rem;
-      font-size: 0.85rem;
-      color: #888;
+
+    .hero {
+      margin-bottom: 1.5rem;
     }
-    #progress-bar-container {
-      margin-top: 0.5rem;
-      height: 6px;
-      background: #1a1a1a;
-      border-radius: 3px;
-      overflow: hidden;
-      display: none;
+
+    .hero h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.65rem;
+      line-height: 1.15;
+      background: linear-gradient(135deg, var(--text), var(--text-muted));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
-    #progress-bar {
-      height: 100%;
-      width: 0%;
-      background: #4f9cf7;
-      transition: width 0.2s;
+
+    .hero p {
+      max-width: 760px;
+      color: var(--text-muted);
+      font-size: 0.98rem;
     }
-    #tabs {
-      display: flex;
-      gap: 0.5rem;
-      padding: 0.75rem 1.5rem 0;
+
+    .composer {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
     }
-    .tab-btn {
-      padding: 0.55rem 0.95rem;
-      border-radius: 999px;
-      border: 1px solid #2f2f2f;
-      background: #181818;
-      color: #bdbdbd;
-      cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-    .tab-btn.active {
-      background: #2563eb;
-      border-color: #2563eb;
-      color: #fff;
-    }
-    #panels {
-      flex: 1;
-      min-height: 0;
-      display: flex;
-    }
-    .panel {
-      flex: 1;
-      min-height: 0;
-      display: none;
-      flex-direction: column;
-    }
-    .panel.active {
-      display: flex;
-    }
-    #chat {
-      flex: 1;
-      overflow-y: auto;
-      padding: 1rem 1.5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-    .message {
-      max-width: 80%;
-      padding: 0.75rem 1rem;
-      border-radius: 12px;
-      line-height: 1.5;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      font-size: 0.95rem;
-    }
-    .message.user {
-      align-self: flex-end;
-      background: #2563eb;
-      color: #fff;
-    }
-    .message.assistant {
-      align-self: flex-start;
-      background: #1e1e1e;
-      color: #ddd;
-    }
-    .input-area {
-      padding: 0.75rem 1.5rem;
-      border-top: 1px solid #2a2a2a;
-      display: flex;
-      gap: 0.5rem;
-    }
-    .input-area textarea {
-      flex: 1;
-      resize: none;
-      padding: 0.6rem 0.75rem;
-      border-radius: 8px;
-      border: 1px solid #333;
-      background: #1a1a1a;
-      color: #e0e0e0;
-      font-size: 0.95rem;
-      font-family: inherit;
-      rows: 1;
-      height: 42px;
-    }
-    .input-area textarea:focus,
-    .panel textarea:focus {
-      outline: none;
-      border-color: #4f9cf7;
-    }
-    button {
-      padding: 0.6rem 1rem;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 500;
-    }
-    button:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-    #send-btn {
-      background: #2563eb;
-      color: #fff;
-    }
-    #clear-btn {
-      background: #2a2a2a;
-      color: #ccc;
-    }
-    #clear-btn:hover,
-    #clear-summary-btn:hover {
-      background: #333;
-    }
-    #summary-panel {
-      padding: 1rem 1.5rem 1.5rem;
-      gap: 1rem;
-    }
-    .panel-copy {
-      color: #a0a0a0;
-      font-size: 0.95rem;
-      line-height: 1.5;
-    }
-    #summary-input {
-      flex: 1;
+
+    .composer textarea {
+      width: 100%;
       min-height: 220px;
       resize: vertical;
-      padding: 0.9rem 1rem;
-      border-radius: 12px;
-      border: 1px solid #333;
-      background: #1a1a1a;
-      color: #e0e0e0;
-      font-size: 0.95rem;
-      font-family: inherit;
-      line-height: 1.5;
-    }
-    #summary-actions {
-      display: flex;
-      gap: 0.5rem;
-    }
-    #summarize-btn {
-      background: #2563eb;
-      color: #fff;
-    }
-    #clear-summary-btn {
-      background: #2a2a2a;
-      color: #ccc;
-    }
-    #summary-output {
-      min-height: 180px;
-      padding: 1rem;
-      border: 1px solid #2f2f2f;
-      border-radius: 12px;
-      background: #151515;
-      color: #ddd;
+      padding: 1rem 1.1rem;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #12151d;
+      color: var(--text);
+      font: inherit;
       line-height: 1.6;
+      outline: none;
+    }
+
+    .composer textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-glow);
+    }
+
+    .composer-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 0.9rem;
+      flex-wrap: wrap;
+    }
+
+    .composer-note,
+    .meta-line {
+      color: var(--text-muted);
+      font-size: 0.86rem;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.92rem;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .primary-btn {
+      background: var(--accent);
+      color: white;
+      padding: 0.72rem 1.05rem;
+    }
+
+    .primary-btn:hover:not(:disabled) {
+      background: var(--accent-light);
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .secondary-btn {
+      background: #202533;
+      color: var(--text);
+      padding: 0.72rem 1.05rem;
+      border: 1px solid var(--border);
+    }
+
+    .secondary-btn:hover:not(:disabled) {
+      background: var(--surface-hover);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 2rem;
+      align-items: start;
+    }
+
+    .article-shell {
+      min-width: 0;
+    }
+
+    .article-content {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .placeholder {
+      padding: 1.2rem 1.3rem;
+      background: rgba(99, 102, 241, 0.06);
+      border: 1px dashed rgba(129, 140, 248, 0.4);
+      border-radius: 14px;
+      color: var(--text-muted);
+    }
+
+    .article-block {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid transparent;
+      border-radius: 14px;
+      padding: 1rem 1.1rem;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .article-block:hover {
+      background: var(--surface);
+      border-color: var(--border);
+    }
+
+    .article-block h2,
+    .article-block h3 {
+      font-weight: 750;
+      letter-spacing: -0.02em;
+      line-height: 1.3;
+    }
+
+    .article-block h2 {
+      font-size: 1.45rem;
+    }
+
+    .article-block h3 {
+      font-size: 1.08rem;
+      color: var(--text-muted);
+    }
+
+    .article-paragraph {
+      position: relative;
+      padding-right: 6rem;
+      font-size: 1.02rem;
       white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .summarize-btn {
+      position: absolute;
+      top: 0;
+      right: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.42rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: rgba(99, 102, 241, 0.08);
+      color: var(--accent-light);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .summarize-btn:hover:not(:disabled) {
+      background: var(--surface-hover);
+      border-color: var(--accent);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .summary-block {
+      margin-top: 0.9rem;
+      background: rgba(99, 102, 241, 0.08);
+      border: 1px solid rgba(129, 140, 248, 0.24);
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+    }
+
+    .summary-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 0.35rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-light);
+    }
+
+    .summary-text {
+      white-space: pre-wrap;
+      line-height: 1.7;
+    }
+
+    .summary-stats {
+      margin-top: 0.65rem;
+      padding-top: 0.65rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      font-size: 0.78rem;
+    }
+
+    .summary-stats span {
+      color: var(--accent-light);
+      font-weight: 700;
+    }
+
+    .aside-card {
+      position: sticky;
+      top: 2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1rem 1rem 1.1rem;
+    }
+
+    .aside-card h2 {
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+    }
+
+    .aside-card p {
+      color: var(--text-muted);
+      font-size: 0.86rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .aside-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      color: var(--text-muted);
+      font-size: 0.83rem;
+    }
+
+    .aside-metric {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.55rem 0.7rem;
+      background: #141822;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .aside-metric strong {
+      color: var(--text);
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border: 1.5px solid var(--accent-glow);
+      border-top-color: var(--accent-light);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    .chat-widget {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 150;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      width: 420px;
+      max-width: calc(100vw - 32px);
+    }
+
+    .chat-response {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      display: none;
+      animation: bubbleIn 0.2s ease-out;
+      max-height: 50vh;
       overflow-y: auto;
     }
-    #summary-output.empty {
-      color: #777;
+
+    @keyframes bubbleIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.97);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .chat-response.visible {
+      display: block;
+    }
+
+    .chat-response-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      margin-bottom: 8px;
+    }
+
+    .chat-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent-light);
+    }
+
+    .chat-close {
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .chat-close:hover:not(:disabled) {
+      background: var(--surface-hover);
+      color: var(--text);
+    }
+
+    .chat-question {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      font-style: italic;
+    }
+
+    .chat-text {
+      white-space: pre-wrap;
+      font-size: 0.92rem;
+      line-height: 1.65;
+    }
+
+    .chat-stats {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .chat-stats span {
+      color: var(--accent-light);
+      font-weight: 700;
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 6px 6px 6px 16px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .chat-input-row:focus-within {
+      border-color: var(--accent);
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 6px 0;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 0.9rem;
+      font-family: inherit;
+      outline: none;
+    }
+
+    .chat-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .chat-send {
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      flex-shrink: 0;
+    }
+
+    .chat-send:hover:not(:disabled) {
+      background: var(--accent-light);
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 17, 23, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.35s ease;
+    }
+
+    .loading-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loading-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3rem 3rem 2.5rem;
+      text-align: center;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .loading-card h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .loading-card p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+    }
+
+    .loading-progress {
+      height: 6px;
+      background: #11141c;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .loading-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #a78bfa);
+      border-radius: 3px;
+      transition: width 0.3s;
+      width: 0%;
+    }
+
+    .loading-detail {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 14px;
+    }
+
+    .ready-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      color: var(--text-muted);
+      font-size: 0.83rem;
+      margin-bottom: 1rem;
+    }
+
+    .ready-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: #495063;
+      box-shadow: 0 0 0 6px rgba(73, 80, 99, 0.12);
+    }
+
+    .ready-dot.online {
+      background: var(--success);
+      box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.12);
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .aside-card {
+        position: static;
+      }
+    }
+
+    @media (max-width: 640px) {
+      main {
+        padding: 1.4rem 1rem 7rem;
+      }
+
+      .hero h1 {
+        font-size: 1.55rem;
+      }
+
+      .composer-footer {
+        align-items: flex-start;
+      }
+
+      .article-paragraph {
+        padding-right: 0;
+      }
+
+      .summarize-btn {
+        position: static;
+        margin-top: 0.85rem;
+      }
+
+      .chat-widget {
+        right: 12px;
+        bottom: 12px;
+        max-width: calc(100vw - 24px);
+      }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>LFM2.5-350M — Chat + Summarize</h1>
-    <div id="status">Initializing…</div>
-    <div id="progress-bar-container"><div id="progress-bar"></div></div>
-  </header>
+  <main>
+    <section class="hero">
+      <h1>LFM2.5 Reader, Summarizer, and Q&amp;A</h1>
+      <p>
+        Paste a full article or long note, click convert, and the app will clean links, URLs, image markup,
+        and noisy formatting. Each section gets its own summarize action, and the bottom-right box can answer
+        questions about the converted text.
+      </p>
+    </section>
 
-  <div id="tabs">
-    <button class="tab-btn active" data-panel="chat-panel">Chat</button>
-    <button class="tab-btn" data-panel="summary-panel">Summarize</button>
+    <div class="ready-indicator">
+      <span id="ready-dot" class="ready-dot"></span>
+      <span id="ready-text">Loading WebGPU model...</span>
+    </div>
+
+    <section class="composer">
+      <textarea id="source-input" placeholder="Paste the full text here..."></textarea>
+      <div class="composer-footer">
+        <div class="composer-note" id="composer-note">
+          Convert cleans URLs, markdown image syntax, HTML tags, and extra whitespace before splitting into sections.
+        </div>
+        <div class="button-row">
+          <button id="convert-btn" class="primary-btn">Convert</button>
+          <button id="clear-btn" class="secondary-btn">Clear</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="layout">
+      <section class="article-shell">
+        <div class="article-content" id="article-content">
+          <div class="placeholder">
+            Paste text above and click <strong>Convert</strong>. The cleaned article will appear here in sections.
+          </div>
+        </div>
+      </section>
+
+      <aside class="aside-card">
+        <h2>Converted text</h2>
+        <p>Use this panel to check what the cleanup step kept before you ask questions or summarize sections.</p>
+        <div class="aside-list">
+          <div class="aside-metric"><span>Status</span><strong id="meta-status">Waiting for input</strong></div>
+          <div class="aside-metric"><span>Sections</span><strong id="meta-sections">0</strong></div>
+          <div class="aside-metric"><span>Words</span><strong id="meta-words">0</strong></div>
+          <div class="aside-metric"><span>Model</span><strong id="meta-model">Loading</strong></div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <div class="chat-widget">
+    <div class="chat-response" id="chat-response">
+      <div class="chat-response-header">
+        <div class="chat-label" id="chat-label"><span class="spinner"></span> Thinking</div>
+        <button class="chat-close" id="chat-close" aria-label="Close answer">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="chat-question" id="chat-question"></div>
+      <div class="chat-text" id="chat-text"></div>
+      <div class="chat-stats" id="chat-stats"></div>
+    </div>
+    <div class="chat-input-row">
+      <input
+        type="text"
+        class="chat-input"
+        id="chat-input"
+        placeholder="Ask about the converted text..."
+        autocomplete="off"
+        disabled
+      />
+      <button class="chat-send" id="chat-send" disabled aria-label="Ask question">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
   </div>
 
-  <div id="panels">
-    <section id="chat-panel" class="panel active">
-      <div id="chat"></div>
-
-      <div class="input-area">
-        <textarea id="user-input" placeholder="Type a message…" disabled></textarea>
-        <button id="send-btn" disabled>Send</button>
-        <button id="clear-btn">Clear</button>
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="loading-card">
+      <h2>Loading LFM2.5-350M</h2>
+      <p>Downloading the browser model and preparing WebGPU.</p>
+      <div class="loading-progress">
+        <div class="loading-progress-fill" id="loading-progress-fill"></div>
       </div>
-    </section>
-
-    <section id="summary-panel" class="panel">
-      <p class="panel-copy">
-        Paste your own text to generate a concise summary inspired by the LFM2.5 WebGPU demo.
-      </p>
-      <textarea
-        id="summary-input"
-        placeholder="Paste an article, meeting notes, or any long text here…"
-        disabled
-      ></textarea>
-      <div id="summary-actions">
-        <button id="summarize-btn" disabled>Summarize</button>
-        <button id="clear-summary-btn">Clear</button>
-      </div>
-      <div id="summary-output" class="empty">Your summary will appear here.</div>
-    </section>
+      <div class="loading-detail" id="loading-detail">Starting...</div>
+    </div>
   </div>
 
   <script type="module">
     const worker = new Worker("worker.js", { type: "module" });
 
-    const tabButtons = document.querySelectorAll(".tab-btn");
-    const panels = document.querySelectorAll(".panel");
-    const chatEl = document.getElementById("chat");
-    const inputEl = document.getElementById("user-input");
-    const sendBtn = document.getElementById("send-btn");
+    const SUMMARIZE_SVG = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 6h16M4 12h10M4 18h14"></path>
+      </svg>
+    `;
+
+    const sourceInput = document.getElementById("source-input");
+    const convertBtn = document.getElementById("convert-btn");
     const clearBtn = document.getElementById("clear-btn");
-    const summaryInputEl = document.getElementById("summary-input");
-    const summarizeBtn = document.getElementById("summarize-btn");
-    const clearSummaryBtn = document.getElementById("clear-summary-btn");
-    const summaryOutputEl = document.getElementById("summary-output");
-    const statusEl = document.getElementById("status");
-    const progressContainer = document.getElementById("progress-bar-container");
-    const progressBar = document.getElementById("progress-bar");
+    const composerNote = document.getElementById("composer-note");
+    const articleContent = document.getElementById("article-content");
+    const metaStatus = document.getElementById("meta-status");
+    const metaSections = document.getElementById("meta-sections");
+    const metaWords = document.getElementById("meta-words");
+    const metaModel = document.getElementById("meta-model");
+    const readyDot = document.getElementById("ready-dot");
+    const readyText = document.getElementById("ready-text");
 
-    let messages = [
-      { role: "system", content: "You are a helpful assistant." }
-    ];
-    let ready = false;
-    let generating = false;
-    let activeTask = null;
+    const chatInput = document.getElementById("chat-input");
+    const chatSend = document.getElementById("chat-send");
+    const chatResponse = document.getElementById("chat-response");
+    const chatLabel = document.getElementById("chat-label");
+    const chatQuestion = document.getElementById("chat-question");
+    const chatText = document.getElementById("chat-text");
+    const chatStats = document.getElementById("chat-stats");
+    const chatClose = document.getElementById("chat-close");
+
+    const loadingOverlay = document.getElementById("loading-overlay");
+    const loadingProgressFill = document.getElementById("loading-progress-fill");
+    const loadingDetail = document.getElementById("loading-detail");
+
+    let modelReady = false;
+    let isGenerating = false;
     let generationId = 0;
-    let currentAssistantEl = null;
-    let currentAssistantText = "";
-    let currentSummaryText = "";
+    let articleSource = "";
+    let sections = [];
+    let activeRequest = null;
 
-    statusEl.textContent = "Loading model…";
-    progressContainer.style.display = "block";
     worker.postMessage({ type: "load" });
 
-    worker.addEventListener("message", (e) => {
-      const data = e.data;
+    worker.addEventListener("message", (event) => {
+      const data = event.data;
 
       if (data.type === "progress") {
         const pct = data.progress != null ? Math.round(data.progress) : 0;
-        statusEl.textContent = `Loading model… ${pct}%`;
-        progressBar.style.width = pct + "%";
-      } else if (data.type === "ready") {
-        ready = true;
-        statusEl.textContent = "Ready";
-        progressContainer.style.display = "none";
+        loadingProgressFill.style.width = pct + "%";
+        loadingDetail.textContent = `Loading model... ${pct}%`;
+        readyText.textContent = `Loading WebGPU model... ${pct}%`;
+        return;
+      }
+
+      if (data.type === "ready") {
+        modelReady = true;
+        loadingOverlay.classList.add("hidden");
+        readyDot.classList.add("online");
+        readyText.textContent = "Model ready";
+        metaModel.textContent = "Ready";
         updateControls();
-        focusActiveInput();
-      } else if (data.type === "token") {
-        if (data.generationId !== generationId) return;
-        if (data.task === "summary") {
-          currentSummaryText += data.token;
-          summaryOutputEl.textContent = currentSummaryText;
-        } else {
-          currentAssistantText += data.token;
-          if (currentAssistantEl) {
-            currentAssistantEl.textContent = currentAssistantText;
-            chatEl.scrollTop = chatEl.scrollHeight;
-          }
+        if (sections.length > 0) {
+          chatInput.focus();
         }
-      } else if (data.type === "done") {
-        if (data.generationId !== generationId) return;
-        const finalText = data.output || currentAssistantText;
-        if (data.task === "summary") {
-          summaryOutputEl.textContent = data.output || currentSummaryText || "No summary generated.";
-          summaryOutputEl.classList.remove("empty");
-        } else {
-          if (currentAssistantEl) {
-            currentAssistantEl.textContent = finalText;
-          }
-          messages.push({ role: "assistant", content: finalText });
-          currentAssistantEl = null;
-          currentAssistantText = "";
+        return;
+      }
+
+      if (!activeRequest || data.generationId !== generationId) {
+        return;
+      }
+
+      if (data.type === "token") {
+        activeRequest.tokenCount += 1;
+        activeRequest.firstTokenAt ||= performance.now();
+        activeRequest.outputEl.textContent += data.token;
+        if (activeRequest.type === "chat") {
+          chatResponse.classList.add("visible");
         }
-        currentSummaryText = "";
-        generating = false;
-        activeTask = null;
-        statusEl.textContent = "Ready";
-        updateControls();
-        focusActiveInput();
-      } else if (data.type === "error") {
-        statusEl.textContent = "Error: " + data.message;
-        generating = false;
-        activeTask = null;
-        currentAssistantEl = null;
-        currentAssistantText = "";
-        currentSummaryText = "";
-        updateControls();
+        return;
+      }
+
+      if (data.type === "done") {
+        finishRequest(data.output || activeRequest.outputEl.textContent || "");
+        return;
+      }
+
+      if (data.type === "error") {
+        finishRequest("Error: " + data.message, true);
       }
     });
 
-    function sendMessage() {
-      if (!ready || generating) return;
-      const text = inputEl.value.trim();
-      if (!text) return;
+    function cleanText(rawText) {
+      return rawText
+        .replace(/\r\n?/g, "\n")
+        .replace(/!\[[^\]]*]\([^)]*\)/g, " ")
+        .replace(/<img\b[^>]*>/gi, " ")
+        .replace(/<figure[\s\S]*?<\/figure>/gi, " ")
+        .replace(/<picture[\s\S]*?<\/picture>/gi, " ")
+        .replace(/<a\b[^>]*>(.*?)<\/a>/gi, "$1")
+        .replace(/<\/(p|div|section|article|h1|h2|h3|h4|li|ul|ol|blockquote)>/gi, "\n")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\[([^\]]+)]\((https?:\/\/[^)]+)\)/g, "$1")
+        .replace(/(?:https?:\/\/|www\.)\S+/gi, " ")
+        .replace(/\[\d+\]/g, " ")
+        .replace(/[ \t]+\n/g, "\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .replace(/[ \t]{2,}/g, " ")
+        .trim();
+    }
 
-      appendBubble(text, "user");
-      messages.push({ role: "user", content: text });
-      inputEl.value = "";
+    function splitSections(cleanedText) {
+      const chunks = cleanedText
+        .split(/\n\s*\n+/)
+        .map((chunk) => chunk.split("\n").map((line) => line.trim()).filter(Boolean).join(" "))
+        .map((chunk) => chunk.replace(/\s{2,}/g, " ").trim())
+        .filter(Boolean);
 
-      currentAssistantText = "";
-      currentAssistantEl = appendBubble("", "assistant");
+      return chunks.map((text) => {
+        const words = text.split(/\s+/).filter(Boolean);
+        const looksLikeHeading =
+          words.length <= 12 &&
+          text.length <= 90 &&
+          !/[.!?]$/.test(text) &&
+          text === text.trim();
 
-      generating = true;
-      activeTask = "chat";
-      generationId++;
-      statusEl.textContent = "Generating response…";
-      updateControls();
-
-      worker.postMessage({
-        type: "generate",
-        task: "chat",
-        messages: [...messages],
-        generationId,
+        return {
+          type: looksLikeHeading ? "heading" : "paragraph",
+          text,
+          wordCount: words.length,
+        };
       });
     }
 
-    function summarizeText() {
-      if (!ready || generating) return;
-      const text = summaryInputEl.value.trim();
-      if (!text) return;
+    function renderSections() {
+      articleContent.innerHTML = "";
 
-      currentSummaryText = "";
-      summaryOutputEl.textContent = "";
-      summaryOutputEl.classList.remove("empty");
+      if (!sections.length) {
+        articleContent.innerHTML = `
+          <div class="placeholder">
+            Nothing usable remained after cleanup. Try pasting more article text or plain text content.
+          </div>
+        `;
+        return;
+      }
 
-      generating = true;
-      activeTask = "summary";
-      generationId++;
-      statusEl.textContent = "Summarizing…";
+      sections.forEach((section, index) => {
+        const block = document.createElement("section");
+        block.className = "article-block";
+
+        if (section.type === "heading") {
+          const heading = document.createElement(index === 0 ? "h2" : "h3");
+          heading.textContent = section.text;
+          block.appendChild(heading);
+        } else {
+          const paragraph = document.createElement("div");
+          paragraph.className = "article-paragraph";
+          paragraph.textContent = section.text;
+
+          const button = document.createElement("button");
+          button.className = "summarize-btn";
+          button.innerHTML = `${SUMMARIZE_SVG} Summarize`;
+          button.addEventListener("click", () => summarizeSection(section, block, button));
+
+          paragraph.appendChild(button);
+          block.appendChild(paragraph);
+        }
+
+        articleContent.appendChild(block);
+      });
+    }
+
+    function convertSource() {
+      if (isGenerating) return;
+
+      const rawText = sourceInput.value.trim();
+      if (!rawText) {
+        articleSource = "";
+        sections = [];
+        renderSections();
+        updateMeta();
+        updateControls();
+        return;
+      }
+
+      articleSource = cleanText(rawText);
+      sections = splitSections(articleSource);
+      renderSections();
+      updateMeta();
       updateControls();
+
+      if (sections.length) {
+        composerNote.textContent = "Converted successfully. Hover a section to summarize it, or ask a question in the bottom-right.";
+      } else {
+        composerNote.textContent = "The cleanup step removed almost everything. Try pasting more text and less markup.";
+      }
+    }
+
+    function updateMeta() {
+      const words = articleSource ? articleSource.split(/\s+/).filter(Boolean).length : 0;
+      metaStatus.textContent = articleSource ? "Converted" : "Waiting for input";
+      metaSections.textContent = String(sections.filter((section) => section.type === "paragraph").length);
+      metaWords.textContent = String(words);
+    }
+
+    function updateControls() {
+      const hasText = sourceInput.value.trim().length > 0;
+      const hasArticle = articleSource.length > 0 && sections.length > 0;
+
+      convertBtn.disabled = !hasText || isGenerating;
+      clearBtn.disabled = !hasText || isGenerating;
+      chatInput.disabled = !modelReady || !hasArticle || isGenerating;
+      chatSend.disabled = !modelReady || !hasArticle || isGenerating;
+
+      articleContent.querySelectorAll(".summarize-btn").forEach((button) => {
+        button.disabled = !modelReady || isGenerating;
+      });
+    }
+
+    function beginRequest(type, outputEl, context = {}) {
+      generationId += 1;
+      isGenerating = true;
+      activeRequest = {
+        type,
+        outputEl,
+        startedAt: performance.now(),
+        firstTokenAt: null,
+        tokenCount: 0,
+        ...context,
+      };
+      updateControls();
+    }
+
+    function finishRequest(finalText, isError = false) {
+      if (!activeRequest) return;
+
+      activeRequest.outputEl.textContent = finalText;
+      const elapsed = ((performance.now() - activeRequest.startedAt) / 1000).toFixed(1);
+      const decodeSeconds = activeRequest.firstTokenAt
+        ? (performance.now() - activeRequest.firstTokenAt) / 1000
+        : 0;
+      const tokPerSec =
+        activeRequest.tokenCount > 1 && decodeSeconds > 0
+          ? ((activeRequest.tokenCount - 1) / decodeSeconds).toFixed(1)
+          : "-";
+
+      if (activeRequest.type === "summary") {
+        activeRequest.labelEl.textContent = isError ? "Summary failed" : "Summary";
+        const originalWords = activeRequest.sourceText.split(/\s+/).filter(Boolean).length;
+        const summaryWords = finalText.split(/\s+/).filter(Boolean).length;
+        activeRequest.statsEl.innerHTML =
+          `<span>${originalWords}</span> words to <span>${summaryWords}</span> words · ${elapsed}s · <span>${tokPerSec}</span> tok/s`;
+        activeRequest.buttonEl.disabled = false;
+        activeRequest.buttonEl.innerHTML = `${SUMMARIZE_SVG} Re-summarize`;
+      } else if (activeRequest.type === "chat") {
+        chatLabel.textContent = isError ? "Answer failed" : "Answer";
+        chatStats.innerHTML = `${elapsed}s · <span>${tokPerSec}</span> tok/s`;
+      }
+
+      isGenerating = false;
+      activeRequest = null;
+      updateControls();
+    }
+
+    function summarizeSection(section, block, button) {
+      if (!modelReady || isGenerating) return;
+
+      let summaryBlock = block.querySelector(".summary-block");
+      let labelEl;
+      let outputEl;
+      let statsEl;
+
+      if (!summaryBlock) {
+        summaryBlock = document.createElement("div");
+        summaryBlock.className = "summary-block";
+
+        labelEl = document.createElement("div");
+        labelEl.className = "summary-label";
+        summaryBlock.appendChild(labelEl);
+
+        outputEl = document.createElement("div");
+        outputEl.className = "summary-text";
+        summaryBlock.appendChild(outputEl);
+
+        statsEl = document.createElement("div");
+        statsEl.className = "summary-stats";
+        summaryBlock.appendChild(statsEl);
+
+        block.appendChild(summaryBlock);
+      } else {
+        labelEl = summaryBlock.querySelector(".summary-label");
+        outputEl = summaryBlock.querySelector(".summary-text");
+        statsEl = summaryBlock.querySelector(".summary-stats");
+      }
+
+      labelEl.innerHTML = `<span class="spinner"></span> Summarizing`;
+      outputEl.textContent = "";
+      statsEl.textContent = "";
+      button.disabled = true;
+
+      beginRequest("summary", outputEl, {
+        labelEl,
+        statsEl,
+        buttonEl: button,
+        sourceText: section.text,
+      });
 
       worker.postMessage({
         type: "generate",
         task: "summary",
+        generationId,
         messages: [
           {
             role: "system",
-            content: "You are a concise summarization assistant. Write a clear summary using only the provided text. Start with a short paragraph, then include 3 to 5 short bullet points when useful.",
+            content: "You summarize one section of text. Remove noise, keep only the key ideas, and stay concise.",
           },
           {
             role: "user",
-            content: `Summarize the following text. Focus on the most important ideas, key details, and action items when present.\n\n${text}`,
+            content: `Summarize this section in a short paragraph using only the information below.\n\n${section.text}`,
           },
         ],
-        generationId,
+        options: {
+          max_new_tokens: 220,
+          do_sample: false,
+        },
       });
     }
 
-    function appendBubble(text, role) {
-      const div = document.createElement("div");
-      div.className = "message " + role;
-      div.textContent = text;
-      chatEl.appendChild(div);
-      chatEl.scrollTop = chatEl.scrollHeight;
-      return div;
+    function askQuestion() {
+      const question = chatInput.value.trim();
+      if (!question || !modelReady || !articleSource || isGenerating) return;
+
+      chatQuestion.textContent = question;
+      chatText.textContent = "";
+      chatStats.textContent = "";
+      chatLabel.innerHTML = `<span class="spinner"></span> Thinking`;
+      chatResponse.classList.add("visible");
+
+      beginRequest("chat", chatText);
+      chatInput.value = "";
+
+      worker.postMessage({
+        type: "generate",
+        task: "chat",
+        generationId,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You answer questions about the converted article text. Use only the text provided. If the answer is not supported by the text, say that clearly.\n\n" +
+              articleSource,
+          },
+          {
+            role: "user",
+            content: question,
+          },
+        ],
+        options: {
+          max_new_tokens: 320,
+          do_sample: false,
+        },
+      });
     }
 
-    function updateControls() {
-      const busy = generating;
-      inputEl.disabled = !ready || busy;
-      sendBtn.disabled = !ready || busy;
-      summaryInputEl.disabled = !ready || busy;
-      summarizeBtn.disabled = !ready || busy;
-      clearBtn.disabled = busy;
-      clearSummaryBtn.disabled = busy;
-    }
-
-    function focusActiveInput() {
-      const activePanel = document.querySelector(".panel.active");
-      if (!activePanel || !ready || generating) return;
-      if (activePanel.id === "summary-panel") {
-        summaryInputEl.focus();
-      } else {
-        inputEl.focus();
-      }
-    }
-
-    sendBtn.addEventListener("click", sendMessage);
-    summarizeBtn.addEventListener("click", summarizeText);
-
-    inputEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
-
-    summaryInputEl.addEventListener("keydown", (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-        e.preventDefault();
-        summarizeText();
-      }
-    });
+    convertBtn.addEventListener("click", convertSource);
 
     clearBtn.addEventListener("click", () => {
-      if (generating) return;
-      messages = [{ role: "system", content: "You are a helpful assistant." }];
-      chatEl.innerHTML = "";
-      generationId++;
-      currentAssistantEl = null;
-      currentAssistantText = "";
+      if (isGenerating) return;
+      sourceInput.value = "";
+      articleSource = "";
+      sections = [];
+      composerNote.textContent =
+        "Convert cleans URLs, markdown image syntax, HTML tags, and extra whitespace before splitting into sections.";
+      renderSections();
+      updateMeta();
+      updateControls();
+      chatResponse.classList.remove("visible");
+      chatInput.value = "";
+      chatQuestion.textContent = "";
+      chatText.textContent = "";
+      chatStats.textContent = "";
     });
 
-    clearSummaryBtn.addEventListener("click", () => {
-      if (generating) return;
-      summaryInputEl.value = "";
-      summaryOutputEl.textContent = "Your summary will appear here.";
-      summaryOutputEl.classList.add("empty");
-      generationId++;
-      currentSummaryText = "";
+    sourceInput.addEventListener("input", updateControls);
+    sourceInput.addEventListener("keydown", (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
+        convertSource();
+      }
     });
 
-    tabButtons.forEach((button) => {
-      button.addEventListener("click", () => {
-        const targetPanel = button.dataset.panel;
-        tabButtons.forEach((tab) => tab.classList.toggle("active", tab === button));
-        panels.forEach((panel) => panel.classList.toggle("active", panel.id === targetPanel));
-        focusActiveInput();
-      });
+    chatSend.addEventListener("click", askQuestion);
+    chatInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        askQuestion();
+      }
     });
+
+    chatClose.addEventListener("click", () => {
+      if (!isGenerating) {
+        chatResponse.classList.remove("visible");
+      }
+    });
+
+    updateMeta();
+    updateControls();
   </script>
 </body>
 </html>
