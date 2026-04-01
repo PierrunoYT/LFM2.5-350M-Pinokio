@@ -129,6 +129,20 @@ function cleanText(rawText) {
   text = text.replace(/&#39;/g, "'");
   text = text.replace(/&nbsp;/g, " ");
 
+  // Remove pipe-separated navigation menus (e.g. "Home | News | Sport | ...")
+  // Matches runs of 3+ pipe-delimited segments that contain no sentence-ending punctuation
+  text = text.replace(/(?:[^|.!?\n]{1,40}\|){2,}[^|.!?\n]{0,40}/g, " ");
+
+  // Remove repeated "N / N" rating artifacts (e.g. "10 / 10 10 / 10 10 / 10")
+  text = text.replace(/(?:\d+\s*\/\s*\d+\s*){2,}/g, " ");
+
+  // Remove social/share metadata: patterns like "Firstname Lastname 123 45 Merken"
+  text = text.replace(/\b\d+\s+\d+\s+(?:Merken|Share|Like|Teilen|Views?|Comments?)\b/gi, " ");
+
+  // Remove isolated short tokens that are just numbers or single uppercase words between spaces
+  // (catches leftover nav fragments like "Publizistisch" standing alone after pipe removal)
+  text = text.replace(/(^|\n)[ \t]*\S{1,3}[ \t]*($|\n)/gm, "\n");
+
   // Collapse excessive whitespace
   text = text.replace(/[ \t]+/g, " ");
   text = text.replace(/\n{3,}/g, "\n\n");
@@ -138,11 +152,29 @@ function cleanText(rawText) {
 }
 
 function splitSections(cleanedText) {
-  const chunks = cleanedText
+  let chunks = cleanedText
     .split(/\n\s*\n+/)
     .map((chunk) => chunk.split("\n").map((line) => line.trim()).filter(Boolean).join(" "))
     .map((chunk) => chunk.replace(/\s{2,}/g, " ").trim())
     .filter(Boolean);
+
+  // If the text has no paragraph breaks, split on sentence boundaries into ~200-word chunks
+  if (chunks.length <= 1 && chunks[0] && chunks[0].split(/\s+/).length > 200) {
+    const sentences = chunks[0].match(/[^.!?]+[.!?]+["']?\s*/g) || [chunks[0]];
+    const regrouped = [];
+    let current = "";
+    for (const sentence of sentences) {
+      const combined = (current + " " + sentence).trim();
+      if (current && combined.split(/\s+/).length > 180) {
+        regrouped.push(current.trim());
+        current = sentence.trim();
+      } else {
+        current = combined;
+      }
+    }
+    if (current.trim()) regrouped.push(current.trim());
+    if (regrouped.length > 1) chunks = regrouped;
+  }
 
   return chunks.map((text) => {
     const words = text.split(/\s+/).filter(Boolean);
