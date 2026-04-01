@@ -90,58 +90,51 @@ worker.addEventListener("message", (event) => {
 });
 
 function cleanText(rawText) {
-  return new Promise((resolve, reject) => {
-    if (!modelReady) {
-      reject(new Error("Model not ready"));
-      return;
-    }
+  let text = rawText;
 
-    const cid = ++generationId;
-    const tempEl = document.createElement("div");
-    tempEl.className = "summary-text";
-    tempEl.textContent = "Cleaning text with LLM...";
-    articleContent.innerHTML = "";
-    articleContent.appendChild(tempEl);
+  // Remove HTML tags
+  text = text.replace(/<[^>]*>/g, " ");
 
-    const onMessage = (event) => {
-      const data = event.data;
-      if (data.generationId !== cid) return;
+  // Remove markdown images: ![alt](url)
+  text = text.replace(/!\[[^\]]*\]\([^)]*\)/g, "");
 
-      if (data.type === "token") {
-        tempEl.textContent += data.token;
-      } else if (data.type === "done") {
-        worker.removeEventListener("message", onMessage);
-        const cleaned = data.output || tempEl.textContent || "";
-        resolve(cleaned);
-      } else if (data.type === "error") {
-        worker.removeEventListener("message", onMessage);
-        reject(new Error(data.message));
-      }
-    };
+  // Remove markdown links but keep label: [label](url) → label
+  text = text.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
 
-    worker.addEventListener("message", onMessage);
+  // Remove standalone URLs
+  text = text.replace(/https?:\/\/[^\s)>\]]+/g, "");
 
-    worker.postMessage({
-      type: "generate",
-      task: "clean",
-      generationId: cid,
-      messages: [
-        {
-          role: "system",
-          content:
-            "Clean the following text by removing all URLs, HTML tags, markdown formatting, image references, citation brackets, navigation elements, ads, and any non-content noise. Preserve the original meaning, structure, and language of the article. Return ONLY the cleaned text with no explanations or commentary.",
-        },
-        {
-          role: "user",
-          content: `Clean this text and return only the meaningful article content:\n\n${rawText}`,
-        },
-      ],
-      options: {
-        max_new_tokens: Math.min(rawText.split(/\s+/).length + 100, 2048),
-        do_sample: false,
-      },
-    });
-  });
+  // Remove citation brackets like [1], [2,3], [citation needed]
+  text = text.replace(/\[\d+(?:[,\s]*\d+)*\]/g, "");
+  text = text.replace(/\[citation needed\]/gi, "");
+
+  // Remove markdown bold/italic markers
+  text = text.replace(/(\*{1,3}|_{1,3})(.*?)\1/g, "$2");
+
+  // Remove markdown headings markers (keep text)
+  text = text.replace(/^#{1,6}\s+/gm, "");
+
+  // Remove markdown horizontal rules
+  text = text.replace(/^[-*_]{3,}\s*$/gm, "");
+
+  // Remove markdown code fences
+  text = text.replace(/```[\s\S]*?```/g, "");
+  text = text.replace(/`([^`]+)`/g, "$1");
+
+  // Decode common HTML entities
+  text = text.replace(/&amp;/g, "&");
+  text = text.replace(/&lt;/g, "<");
+  text = text.replace(/&gt;/g, ">");
+  text = text.replace(/&quot;/g, '"');
+  text = text.replace(/&#39;/g, "'");
+  text = text.replace(/&nbsp;/g, " ");
+
+  // Collapse excessive whitespace
+  text = text.replace(/[ \t]+/g, " ");
+  text = text.replace(/\n{3,}/g, "\n\n");
+  text = text.split("\n").map((line) => line.trim()).filter((line) => line.length > 0).join("\n");
+
+  return Promise.resolve(text.trim());
 }
 
 function splitSections(cleanedText) {
