@@ -195,19 +195,24 @@ button:disabled {
   color: var(--text-muted);
 }
 
+.article-paragraph-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
 .article-paragraph {
-  position: relative;
-  padding-right: 6rem;
+  flex: 1;
+  min-width: 0;
   font-size: 1.02rem;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .summarize-btn {
-  position: absolute;
-  top: 0;
-  right: 0;
+  flex-shrink: 0;
   display: inline-flex;
+  flex-direction: row;
   align-items: center;
   gap: 0.35rem;
   padding: 0.42rem 0.75rem;
@@ -218,6 +223,7 @@ button:disabled {
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .summarize-btn:hover:not(:disabled) {
@@ -587,13 +593,8 @@ button:disabled {
     align-items: flex-start;
   }
 
-  .article-paragraph {
-    padding-right: 0;
-  }
-
-  .summarize-btn {
-    position: static;
-    margin-top: 0.85rem;
+  .article-paragraph-row {
+    flex-direction: column;
   }
 
   .chat-widget {

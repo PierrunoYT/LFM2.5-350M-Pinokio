@@ -244,6 +244,9 @@ function renderSections() {
       heading.textContent = section.text;
       block.appendChild(heading);
     } else {
+      const wrapper = document.createElement("div");
+      wrapper.className = "article-paragraph-row";
+
       const paragraph = document.createElement("div");
       paragraph.className = "article-paragraph";
       paragraph.textContent = section.text;
@@ -253,8 +256,9 @@ function renderSections() {
       button.innerHTML = `${SUMMARIZE_SVG} Summarize`;
       button.addEventListener("click", () => summarizeSection(section, block, button));
 
-      paragraph.appendChild(button);
-      block.appendChild(paragraph);
+      wrapper.appendChild(paragraph);
+      wrapper.appendChild(button);
+      block.appendChild(wrapper);
     }
 
     articleContent.appendChild(block);
