@@ -133,15 +133,26 @@ function cleanText(rawText) {
   // Only removes the pipe-delimited segments themselves, not what follows the last pipe
   text = text.replace(/(?:[^|.!?\n]{1,40}\|){2,}/g, " ");
 
-  // Remove nav items before the first pipe: a run of 5+ short capitalized phrases
-  // that appear immediately before a pipe-delimited segment
-  text = text.replace(/^(?:[A-ZÜÄÖÉÀÂÊÎÔÛÄÖ][^\s.!?|]{0,25}\s+){5,}(?=\S)/m, " ");
+  // Remove nav items before the first pipe: only when a pipe-delimited nav structure
+  // is present on the same line (gated by lookahead for a pipe within 120 chars)
+  text = text.replace(/^(?:[A-ZÜÄÖÉÀÂÊÎÔÛÄÖ][^\s.!?|]{0,25}\s+){5,}(?=[^\n]{0,120}\|)/m, " ");
 
-  // Remove "Publiziert" publication markers common in Swiss/German news sites
-  text = text.replace(/Publiziert\s*\d*\.?\s*/gi, " ");
+  // Remove "Publiziert" publication markers along with any immediately following
+  // date and/or time tokens as one coherent step, preventing partial leftovers
+  // like ":06" when only the hour portion was consumed first.
+  // Covers: "Publiziert", "Publiziert1.", "Publiziert 13:06", "Publiziert 9:05",
+  //         "Publiziert 1. April 2026, 13:06", "Publiziert 01.04.2026 13:06"
+  text = text.replace(
+    /Publiziert\s*\d*\.?\s*(?:\d{1,2}[./]\d{1,2}[./]\d{2,4}[,\s]*)?(?:\d{1,2}\.\s*(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s*\d{4}[,\s]*)?(?:\d{1,2}:\d{2})?\s*/gi,
+    " "
+  );
 
-  // Remove timestamps like "13:06" when they are standalone (not inside a sentence)
-  text = text.replace(/(?<!\w)\d{1,2}:\d{2}(?!\w)/g, " ");
+  // Remove timestamps only when they appear in metadata context:
+  // immediately following an explicit date pattern (not standalone in sentences)
+  text = text.replace(
+    /(?:\d{1,2}\.\s*(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s*\d{4}|(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}|\d{1,2}\.\d{1,2}\.\d{2,4})[,\s]*\s*\d{1,2}:\d{2}\b/gi,
+    (m) => m.replace(/\b\d{1,2}:\d{2}\b/, " ")
+  );
 
   // Remove "N / N" and "N / 10" rating artifacts (single or repeated)
   text = text.replace(/\b(\d+)\s*\/\s*\1\b/g, " ");   // same-number: 10/10, 5/5
@@ -171,8 +182,15 @@ function splitSections(cleanedText) {
 
   // If the text has no paragraph breaks, split on sentence boundaries into ~200-word chunks
   if (chunks.length <= 1 && chunks[0] && chunks[0].split(/\s+/).length > 200) {
+    const source = chunks[0];
     // Negative lookbehind (?<!\d) prevents splitting on ordinal numbers (e.g. "30. April")
-    const sentences = chunks[0].match(/[^.!?]+(?<!\d)[.!?]+[»›"'\u201d\u203a)}\]]*\s*/g) || [chunks[0]];
+    const sentenceRe = /[^.!?]+(?<!\d)[.!?]+[»›"'\u201d\u203a)}\]]*\s*/g;
+    const sentences = source.match(sentenceRe) || [];
+    // Preserve any trailing text not captured by the sentence regex (unpunctuated remainder)
+    const matchedLength = sentences.reduce((sum, s) => sum + s.length, 0);
+    const remainder = source.slice(matchedLength).trim();
+    if (remainder) sentences.push(remainder);
+    if (sentences.length === 0) sentences.push(source);
     const regrouped = [];
     let current = "";
     for (const sentence of sentences) {
