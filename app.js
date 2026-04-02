@@ -38,7 +38,6 @@ let generationId = 0;
 let articleSource = "";
 let sections = [];
 let activeRequest = null;
-let abortController = null;
 
 worker.postMessage({ type: "load" });
 
@@ -282,7 +281,7 @@ async function convertSource() {
   convertBtn.textContent = "Cleaning...";
 
   try {
-    articleSource = await cleanText(rawText);
+    articleSource = cleanText(rawText);
     sections = splitSections(articleSource);
     renderSections();
     updateMeta();
@@ -328,10 +327,6 @@ function updateControls() {
 }
 
 function beginRequest(type, outputEl, context = {}) {
-  if (abortController) {
-    abortController.abort();
-  }
-  abortController = new AbortController();
   generationId += 1;
   isGenerating = true;
   activeRequest = {

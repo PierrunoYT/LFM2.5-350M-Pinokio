@@ -10,6 +10,15 @@ module.exports = {
       update: info.running("update.js"),
       reset: info.running("reset.js"),
     }
+    if (!installed) {
+      return [{
+        default: true,
+        icon: "fa-solid fa-power-off",
+        text: "Start",
+        href: "start.js",
+      }]
+    }
+
     if (installed) {
       if (running.start) {
         let local = info.local("start.js")

@@ -13,7 +13,7 @@ module.exports = {
         path: ".",
         message: "npx --yes serve . -l {{port}} -s",
         on: [{
-          event: "/(http:\\/\\/\\S+)/",
+          event: "/(https?:\\/\\/\\S+)/",
           done: true
         }]
       }

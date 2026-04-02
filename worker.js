@@ -57,6 +57,7 @@ self.addEventListener("message", async (e) => {
         max_new_tokens: options.max_new_tokens ?? 512,
         do_sample: options.do_sample ?? false,
         streamer,
+        signal,
       });
 
       if (signal.aborted) return;
