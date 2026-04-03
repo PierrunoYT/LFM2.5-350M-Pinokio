@@ -1,0 +1,6 @@
+{
+  "version": "5.0",
+  "title": "LFM2.5-350M Reader + Q&A",
+  "description": "Paste long text, clean it into readable sections, summarize each section, and ask questions in-browser with WebGPU.",
+  "icon": "icon.jpg"
+}

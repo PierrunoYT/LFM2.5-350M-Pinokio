@@ -4,8 +4,9 @@ module.exports = {
   description: "Paste long text, clean it into readable sections, summarize each section, and ask questions in-browser with WebGPU.",
   icon: "icon.jpg",
   menu: async (kernel, info) => {
-    let installed = info.exists("index.html")
+    let installed = info.exists("app/index.html")
     let running = {
+      install: info.running("install.js"),
       start: info.running("start.js"),
       update: info.running("update.js"),
       reset: info.running("reset.js"),
@@ -41,6 +42,13 @@ module.exports = {
             href: "start.js",
           }]
         }
+      } else if (running.install) {
+        return [{
+          default: true,
+          icon: 'fa-solid fa-terminal',
+          text: "Install",
+          href: "install.js",
+        }]
       } else if (running.update) {
         return [{
           default: true,
@@ -57,6 +65,10 @@ module.exports = {
         }]
       } else {
         return [{
+          icon: "fa-solid fa-download",
+          text: "Install",
+          href: "install.js",
+        }, {
           default: true,
           icon: "fa-solid fa-power-off",
           text: "Start",

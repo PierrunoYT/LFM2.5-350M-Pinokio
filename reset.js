@@ -3,6 +3,7 @@ module.exports = {
     {
       method: "shell.run",
       params: {
+        path: ".",
         message: "git checkout ."
       }
     },

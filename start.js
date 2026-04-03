@@ -10,10 +10,10 @@ module.exports = {
     {
       method: "shell.run",
       params: {
-        path: ".",
+        path: "app",
         message: "npx --yes serve . -l {{port}} -s",
         on: [{
-          event: "/(https?:\\/\\/\\S+)/",
+          event: "/(http:\\/\\/[0-9.:]+)/",
           done: true
         }]
       }
