@@ -5,5 +5,10 @@ module.exports = {
       path: ".",
       message: "git pull",
     }
+  }, {
+    method: "notify",
+    params: {
+      html: "Update complete."
+    }
   }]
 }
